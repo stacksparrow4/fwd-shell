@@ -90,7 +90,7 @@ func runSession() error {
 			case <-time.After(readDelay):
 			}
 
-			res, err := runCommand(fmt.Sprintf("timeout 0.1s cat %s || true", FIFO_OUT_PATH))
+			res, err := runCommand(fmt.Sprintf("tf=`mktemp`; sh -c \"timeout 0.1s cat %s > $tf\" >/dev/null 2>&1; cat $tf; rm $tf", FIFO_OUT_PATH))
 			if err != nil {
 				readErr <- err
 				return
@@ -101,14 +101,12 @@ func runSession() error {
 	})()
 
 	// Attempt to upgrade to tty
-	_, err = runCommand(fmt.Sprintf("echo %s > %s", shellQuote(ttyUpgrade), FIFO_IN_PATH))
-	if err != nil {
+	if err := sendCommandToFifo(ttyUpgrade); err != nil {
 		stopReadLoop <- nil
 		return err
 	}
 
-	_, err = runCommand(fmt.Sprintf("echo %s > %s", shellQuote("stty -echo || echo failed to disable tty echo"), FIFO_IN_PATH))
-	if err != nil {
+	if err := sendCommandToFifo("stty -echo"); err != nil {
 		stopReadLoop <- nil
 		return err
 	}
@@ -137,6 +135,11 @@ func runSession() error {
 			justSentCommand <- nil
 		}
 	}
+}
+
+func sendCommandToFifo(command string) error {
+	_, err := runCommand(fmt.Sprintf("echo %s > %s", shellQuote(command), FIFO_IN_PATH))
+	return err
 }
 
 func runCommandInBackground(command string) error {
