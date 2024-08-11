@@ -19,10 +19,20 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.20'
+        go-version: '1.22'
 
     - name: Install dependencies
       run: go get .
 
     - name: Build
       run: go build -v ./...
+
+    - name: Release
+      uses: actions/create-release@v1
+      with:
+        draft: false
+        prerelease: false
+        release_name: Release
+        tag_name: ${{ github.ref }}
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
