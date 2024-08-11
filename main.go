@@ -152,12 +152,15 @@ func runCommand(command string) ([]byte, error) {
 
 	var outputBuffer bytes.Buffer
 	outputWriter := bufio.NewWriter(&outputBuffer)
+	var stderrBuffer bytes.Buffer
+	stderrWriter := bufio.NewWriter(&stderrBuffer)
+
 	cmd := exec.Command(flag.Args()[0], append(flag.Args()[1:], wrappedCommand)...)
 	cmd.Stdout = outputWriter
-	cmd.Stderr = outputWriter
+	cmd.Stderr = stderrWriter
 
 	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("command failed: %v and output %s", err, outputBuffer.String())
+		return nil, fmt.Errorf("command failed: %v with stdout '%s' and stderr '%s'", err, outputBuffer.String(), stderrBuffer.String())
 	}
 
 	return outputBuffer.Bytes(), nil
