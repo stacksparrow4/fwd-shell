@@ -113,6 +113,10 @@ func runSession() error {
 
 	// Write loop
 	for {
+		if err := updateTermSize(t); err != nil {
+			return err
+		}
+
 		line, err := t.ReadLine()
 		if err != nil {
 			stopReadLoop <- nil
@@ -135,6 +139,14 @@ func runSession() error {
 			justSentCommand <- nil
 		}
 	}
+}
+
+func updateTermSize(t *term.Terminal) error {
+	w, h, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		return err
+	}
+	return t.SetSize(w, h)
 }
 
 func sendCommandToFifo(command string) error {
