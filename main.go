@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -16,11 +17,18 @@ import (
 const FIFO_IN_PATH = "/tmp/f.inp"
 const FIFO_OUT_PATH = "/tmp/f.out"
 
-const READ_DELAY = 1 * time.Second
-const COMMAND_OUTPUT_DELAY = 500 * time.Millisecond
+var readDelay time.Duration
+var commandOutputDelay time.Duration
+
+func init() {
+	flag.DurationVar(&readDelay, "read-interval", 1*time.Second, "interval for background read loop")
+	flag.DurationVar(&commandOutputDelay, "cmd-delay", 500*time.Millisecond, "delay between sending a command and retrieving it's output")
+}
 
 func main() {
-	if len(os.Args) <= 1 {
+	flag.Parse()
+
+	if len(flag.Args()) == 0 {
 		fmt.Fprintf(os.Stderr, "usage: %s <command to run>\n\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "example: %s python3 exploit.py\n", os.Args[0])
 		fmt.Fprint(os.Stderr, "where\n  python3 exploit.py 'echo hi'\nruns\n  echo hi\non the remote machine and displays the result.\n\n")
@@ -64,8 +72,8 @@ func runSession() error {
 			case <-stopReadLoop:
 				return
 			case <-justSentCommand:
-				time.Sleep(COMMAND_OUTPUT_DELAY)
-			case <-time.After(READ_DELAY):
+				time.Sleep(commandOutputDelay)
+			case <-time.After(readDelay):
 			}
 
 			res, err := runCommand(fmt.Sprintf("timeout 0.1s cat %s || true", FIFO_OUT_PATH))
@@ -114,7 +122,7 @@ func runCommand(command string) ([]byte, error) {
 
 	var outputBuffer bytes.Buffer
 	outputWriter := bufio.NewWriter(&outputBuffer)
-	cmd := exec.Command(os.Args[1], append(os.Args[2:], wrappedCommand)...)
+	cmd := exec.Command(flag.Args()[0], append(flag.Args()[1:], wrappedCommand)...)
 	cmd.Stdout = outputWriter
 	cmd.Stderr = outputWriter
 
