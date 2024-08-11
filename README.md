@@ -40,3 +40,32 @@ You can also customize the timing options:
   -read-interval duration
         interval for background read loop (default 1s)
 ```
+
+# Reusing a connection
+
+`fwd-shell` will run your script many times. If you have an exploit that takes some time to start up but can run multiple seperate commands once started, you can turn it into a HTTP server and run `fwd-shell` with curl. For example, you could do:
+
+```python
+from http.server import SimpleHTTPRequestHandler, HTTPServer
+
+class MyHandler(SimpleHTTPRequestHandler):
+    def do_POST(self):
+        content_length = int(self.headers['Content-Length'] or "0")
+        data = self.rfile.read(content_length)
+
+        self.send_response(200)
+        self.end_headers()
+
+        resp = execute_command(data)
+
+        self.wfile.write(resp)
+
+httpd = HTTPServer(('', 8080), MyHandler)
+httpd.serve_forever()
+```
+
+And then start that script to start the HTTP server. While it is running, run fwd-shell as follows:
+
+```bash
+fwd-shell curl -X POST http://localhost:8080 --data
+```
