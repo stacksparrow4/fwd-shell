@@ -28,14 +28,25 @@ jobs:
       run: go get .
 
     - name: Build
-      run: go build -v ./...
+      run: CGO_ENABLED=0 go build -o fwd-shell -a -ldflags '-s -w -extldflags "-static"' .
 
     - name: Release
       uses: actions/create-release@v1
+      id: create_release
       with:
         draft: false
         prerelease: false
         release_name: Release
-        tag_name: ${{ github.ref }}
+        tag_name: latest
       env:
         GITHUB_TOKEN: ${{ github.token }}
+    
+    - name: Upload release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./fwd-shell
+        asset_name: fwd-shell
+        asset_content_type: application/octet-stream
