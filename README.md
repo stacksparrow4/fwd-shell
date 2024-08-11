@@ -1,4 +1,4 @@
-Generalised implementation of [Ippsec's forwardshell](https://github.com/IppSec/forward-shell/tree/master).
+Generalised implementation of [Ippsec's forward-shell](https://github.com/IppSec/forward-shell/tree/master).
 
 Typical usage:
 
