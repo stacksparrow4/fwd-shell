@@ -22,6 +22,8 @@ root
 uid=0(root) gid=0(root) groups=0(root)
 ```
 
+It would be nice to be able to have a full shell with a TTY. `fwd-shell` accomplishes this only using this script (as opposed to a reverse shell which uses a network socket)
+
 Once this is set up, we can install and run forward shell.
 
 ```bash
